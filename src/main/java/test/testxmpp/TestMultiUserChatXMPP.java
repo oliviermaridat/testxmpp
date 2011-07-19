@@ -1,173 +1,220 @@
 package test.testxmpp;
 
-import java.util.Collection;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.PosixParser;
+import org.apache.log4j.Logger;
 import org.jivesoftware.smack.Chat;
-import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
-import org.jivesoftware.smack.MessageListener;
-import org.jivesoftware.smack.PacketListener;
 import org.jivesoftware.smack.Roster;
-import org.jivesoftware.smack.RosterEntry;
-import org.jivesoftware.smack.RosterGroup;
 import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.packet.Message;
-import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Presence.Type;
 import org.jivesoftware.smackx.Form;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 
-public class TestMultiUserChatXMPP implements MessageListener, PacketListener {
-	private static final int packetReplyTimeout = 500; // millis
+import test.testxmpp.listener.TestPacketListener;
+import test.testxmpp.listener.TestRosterListener;
+
+public class TestMultiUserChatXMPP {
+private static final Logger LOG = Logger.getLogger(TestMultiUserChatXMPP.class);
+	
     private String server;
-    private int port;
+    private String username;
+    private String password;
+    private String resource;
+    private static String defaultServer = "127.0.0.1";
+    private static String defaultUsername = "test";
+    private static String defaultPassword = "test";
+    private static String defaultResource = "SomeComputer";
+    private static final int packetReplyTimeout = 500; // milliseconds
     
     private ConnectionConfiguration config;
     private XMPPConnection connection;
-    private ChatManager chatManager;
-    private MultiUserChat muc;
+    private Roster roster;
     
-	public TestMultiUserChatXMPP(String server, int port) {
-		this.server = server;
-		this.port = port;
+    
+    /**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		CommandLine cmd = getCommandLine(args);
+		String server = cmd.hasOption('s') ? cmd.getOptionValue('s')
+				: defaultServer;
+		String username = cmd.hasOption('u') ? cmd.getOptionValue('u')
+				: defaultUsername;
+		String password = cmd.hasOption('p') ? cmd.getOptionValue('p')
+				: defaultPassword;
+		String resource = cmd.hasOption('r') ? cmd.getOptionValue('r')
+				: defaultResource;
+		XMPPConnection.DEBUG_ENABLED = cmd.hasOption('d');
+		
+		TestMultiUserChatXMPP xmppManager = null;
+        try {
+        	xmppManager = new TestMultiUserChatXMPP(server, username, password, resource);
+        	xmppManager.start();
+        	
+        	// -- Change presence
+	        xmppManager.setStatus(true, "Hello everyone");
+	        
+	        // -- Choose a contact to speak with
+	        String contactJidFylhan = "fylhan@testopenfire";
+	        String contactNameFylhan = "Fylhan";
+	        if (null == xmppManager.roster.getEntry(contactJidFylhan)) {
+	        	LOG.debug(String.format("Creating entry for '%1$s' with name %2$s", contactJidFylhan, contactNameFylhan));
+	        	xmppManager.roster.createEntry(contactJidFylhan, contactNameFylhan, null);
+	        }
+	        String contactJidEliza = "eliza@testopenfire";
+	        String contactNameEliza = "Eliza";
+	        if (null == xmppManager.roster.getEntry(contactJidEliza)) {
+	        	LOG.debug(String.format("Creating entry for '%1$s' with name %2$s", contactJidEliza, contactNameEliza));
+	        	xmppManager.roster.createEntry(contactJidEliza, contactNameEliza, null);
+	        }
+	        
+	        // -- Chat
+	        String pseudonym = "Test";
+	        MultiUserChat chat = new MultiUserChat(xmppManager.connection, "myroom4@conference.testopenfire");
+			// Create the room
+			try {
+				chat.create(pseudonym);
+				// Send an empty room configuration form which indicates that we want
+				// an instant room
+				chat.sendConfigurationForm(new Form(Form.TYPE_SUBMIT));
+			}
+			// Else : join it
+			catch(XMPPException e) {
+				chat.join(pseudonym);
+			}
+			chat.addMessageListener(new TestPacketListener(pseudonym));
+			
+			chat.invite(contactJidFylhan, "Join this excellent room");
+			chat.invite(contactJidEliza, "Join this excellent room");
+        	LOG.info("Enter your message");
+			LOG.info("Say \"bye\" to quit");
+			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+			String msg;
+			while (!(msg = br.readLine()).equals("bye")) {
+				xmppManager.sendMessage(chat, msg);
+			}
+			xmppManager.sendMessage(chat, "bye");
+			// -- Change presence
+	        xmppManager.setStatus(false, "Bye !");
+        }
+        catch (XMPPException e) {
+			e.printStackTrace();
+        }
+	    catch (IOException e) {
+			e.printStackTrace();
+		}
+        catch (Exception e) {
+			e.printStackTrace();
+		}
+        finally {
+        	if (null != xmppManager) {
+        		xmppManager.destroy();
+        	}
+        }
 	}
 	
-	public void init() throws XMPPException {
-		System.out.println(String.format("Initializing connection to server %1$s port %2$d", server, port));
+	protected static CommandLine getCommandLine(String[] args) {
+		Options options = new Options();
+		options.addOption("s", true,
+				"server where the account exists (defaults to "+defaultServer+")");
+		options.addOption("u", true,
+				"the username (defaults to "+defaultUsername+")");
+		options.addOption("p", true,
+				"password for that login name (defaults to "+defaultPassword+")");
+		options.addOption("r", true,
+				"resource you are connecting from (default: "+defaultResource+")");
+		options.addOption("d", false, "enable debug (default: false)");
+		CommandLineParser parser = new PosixParser();
+		CommandLine cmd = null;
+		try {
+			cmd = parser.parse(options, args);
+		} catch (ParseException e) {
+			printHelp(options);
+			System.exit(1);
+		}
+
+		if (cmd.hasOption('h')) {
+			printHelp(options);
+			System.exit(0);
+		}
+		return cmd;
+	}
+	
+	private static void printHelp(Options options) {
+		HelpFormatter formatter = new HelpFormatter();
+		formatter.printHelp("java -jar testxmpp-bin.jar [-s server] [-u username] [-p password] [-r resource] [-d] ", options);
+	}
+	
+	public TestMultiUserChatXMPP(String server, String username, String password, String resource) throws XMPPException {
+		this.server = server;
+		this.username = username;
+		this.password = password;
+		this.resource = resource;
+		initXMPPConnection();
+	}
+	
+	public void initXMPPConnection() {
+		// Prepare configuration
+		int port = 5222;
 		SmackConfiguration.setPacketReplyTimeout(packetReplyTimeout);
 		config = new ConnectionConfiguration(server, port);
 		config.setSASLAuthenticationEnabled(false);
 		config.setSecurityMode(SecurityMode.disabled);
+		// Create connection
 		connection = new XMPPConnection(config);
-		connection.connect();
-		System.out.println("Connected: " + connection.isConnected());
-
-		chatManager = connection.getChatManager();
+		LOG.debug(String.format("Connection initialized to server %1$s port %2$d", server, port));
 	}
 	
-	public void performLogin(String username, String password) throws XMPPException {
-		if (connection!=null && connection.isConnected()) {
-			connection.login(username, password);
+	public void start() throws XMPPException {
+		// Connect and log
+		connection.connect();
+		performLogin(username, password, resource);
+		LOG.debug("Connected and logged: " + connection.isConnected());
+
+		// Add listeners
+		roster = connection.getRoster();
+		roster.addRosterListener(new TestRosterListener(connection));
+	}
+
+	public void performLogin(String username, String password, String resource) throws XMPPException {
+		if (null != connection && connection.isConnected()) {
+			connection.login(username, password, resource);
 		}
 	}
 	
 	public void destroy() {
-		if (connection!=null && connection.isConnected()) {
+		if (null != connection && connection.isConnected()) {
 			connection.disconnect();
+			LOG.debug("You are disconnected");
 		}
 	}
 
 	public void setStatus(boolean available, String status) {
-
-		Presence.Type type = available? Type.available: Type.unavailable;
+		Presence.Type type = available ? Type.available : Type.unavailable;
 		Presence presence = new Presence(type);
 		presence.setStatus(status);
 		connection.sendPacket(presence);
 	}
-
-	public void createEntry(String user, String name) throws Exception {
-		System.out.println(String.format("Creating entry for buddy '%1$s' with name %2$s", user, name));
-		Roster roster = connection.getRoster();
-		roster.createEntry(user, name, null);
-	}
 	
-	public void createMultiUserChat() throws XMPPException {
-		muc = new MultiUserChat(connection, "myroom4@conference.testopenfire");
-		// Create the room
-		try {
-			muc.create("Test");
-			// Send an empty room configuration form which indicates that we want
-			// an instant room
-			muc.sendConfigurationForm(new Form(Form.TYPE_SUBMIT));
-		}
-		catch(XMPPException e) {
-			muc.join("Test");
-		}
-		muc.addMessageListener(this);
-	}
-	
-	public void printRoster() throws Exception {
-		System.out.println("My roster :");
-		Roster roster = connection.getRoster();
-		Collection<RosterEntry> entries = roster.getEntries();  
-		for (RosterEntry entry : entries) {
-			System.out.println(String.format("Buddy:%1$s - Status:%2$s - User JID:%3$s - Type:%4$s", 
-					entry.getName(), entry.getStatus(), entry.getUser(), entry.getType().toString()));
-			for(RosterGroup group : entry.getGroups()) {
-				System.out.println("Group: "+group.getName()+", nb:"+group.getEntryCount());
-			}
-		}
-	}
-	
-	public void sendMessage(String message, String buddyJID) throws XMPPException {
-		System.out.println(String.format("> Sending mesage '%1$s' to user %2$s", message, buddyJID));
-		Chat chat = chatManager.createChat(buddyJID, this);
+	public void sendMessage(Chat chat, String message) throws XMPPException {
+		LOG.debug(String.format("> Sending mesage '%1$s' to %2$s", message, chat.getParticipant()));
 		chat.sendMessage(message);
 	}
-	public void sendMessage(String message, MultiUserChat muc) throws XMPPException {
-		System.out.println(String.format("> Sending mesage '%1$s' to chat %2$s", message, muc.getRoom()));
+	public void sendMessage(MultiUserChat muc, String message) throws XMPPException {
+		LOG.debug(String.format("> Sending mesage '%1$s' to chat %2$s", message, muc.getRoom()));
 		muc.sendMessage(message);
-	}
-	
-	public void processMessage(Chat chat, Message message) {
-		String from = message.getFrom();
-		String body = message.getBody();
-		System.out.println(String.format("< Received message '%1$s' from %2$s (chat room participant : %3$s)", body, from, chat.getParticipant()));
-	}
-	public void processPacket(Packet packet) {
-		if (packet instanceof Message) {
-			Message message = (Message) packet;
-			String from = message.getFrom();
-			String body = message.getBody();
-			System.out.println(String.format("< Received message '%1$s' from %2$s", body, from));
-		}
-	}
-
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		String username = "test";
-        String password = "test";
-        
-        TestMultiUserChatXMPP xmppManager = new TestMultiUserChatXMPP("127.0.0.1", 5222);
-        
-        try {
-			xmppManager.init();
-		
-	        xmppManager.performLogin(username, password);
-	        xmppManager.setStatus(true, "Hello everyone");
-	        
-	        String buddyJIDFylhan = "fylhan@testopenfire";
-	        String buddyName = "Fylhan";
-	        xmppManager.createEntry(buddyJIDFylhan, buddyName);
-	        String buddyJIDEliza = "eliza@testopenfire";
-	        buddyName = "Eliza";
-	        xmppManager.createEntry(buddyJIDEliza, buddyName);
-	        xmppManager.printRoster();
-	        
-	        xmppManager.createMultiUserChat();
-	        xmppManager.muc.invite(buddyJIDFylhan, "Join this excellent room");
-	        xmppManager.muc.invite(buddyJIDEliza, "Join this excellent room");
-	        xmppManager.muc.sendMessage("Hello mates !");
-	        
-	        boolean isRunning = true;
-	        
-	        while (isRunning) {
-	            Thread.sleep(50);
-	        }
-        } catch (XMPPException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        
-        xmppManager.destroy();
 	}
 }
