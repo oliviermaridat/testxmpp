@@ -18,6 +18,7 @@ import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.ChatManagerListener;
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
+import org.jivesoftware.smack.PrivacyList;
 import org.jivesoftware.smack.PrivacyListManager;
 import org.jivesoftware.smack.Roster;
 import org.jivesoftware.smack.SmackConfiguration;
@@ -69,9 +70,6 @@ public class TestChatXMPP {
         	xmppManager = new TestChatXMPP(server, username, password, resource);
         	xmppManager.start();
         	
-        	// -- Change presence
-	        xmppManager.setStatus(true, "Hello everyone");
-	        
 	        // -- Choose a contact to speak with
 	        String contactJid = "fylhan@testopenfire";
 	        String contactName = "Fylhan";
@@ -82,41 +80,46 @@ public class TestChatXMPP {
 	        
 	        // -- Create a privacyItem to block contactJid
 	        List<PrivacyItem> privacyItems = new ArrayList<PrivacyItem>();
-//	    	PrivacyItem item = new PrivacyItem("jid", false, 1);
-//	    	item.setValue(buddyJID);
-//	    	privacyItems.add(item);
-	    	PrivacyItem item = new PrivacyItem("subscription", false, 1);
-	    	item.setValue(PrivacyRule.SUBSCRIPTION_BOTH);
+	    	PrivacyItem item = new PrivacyItem("jid", false, 1);
+	    	item.setValue(contactJid);
+	    	item.setFilterPresence_out(true);
 	    	privacyItems.add(item);
+//	    	PrivacyItem item = new PrivacyItem("subscription", false, 1);
+//	    	item.setValue(PrivacyRule.SUBSCRIPTION_BOTH);
+//	    	privacyItems.add(item);
 	    	// Add it
 	    	PrivacyListManager privacyManager = PrivacyListManager.getInstanceFor(xmppManager.connection);
 	    	privacyManager.createPrivacyList("blockedPeople", privacyItems);
 	    	privacyManager.setDefaultListName("blockedPeople");
 	    	LOG.debug(contactJid+" is now blocked");
-	    	
+
+	    	// -- Change presence
+	        xmppManager.setStatus(true, "Hello everyone");
+	        
 	    	// -- Chat
 	    	Chat chat = xmppManager.chatManager.createChat(contactJid, null); // MessageListener already added in addChatListener 
-	        try {
-	        	LOG.info("Enter your message");
-				LOG.info("Say \"unblock\" to cancel privacy settings, \"bye\" to quit");
-				BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-				String msg;
-				while (!(msg = br.readLine()).equals("bye")) {
-					if (msg.equals("unblock")) {
-						privacyManager.declineDefaultList();
-						privacyManager.deletePrivacyList("blockedPeople");
-						LOG.debug(contactJid+" is now unblocked");
-					}
-					else {
-						xmppManager.sendMessage(chat, msg);
-					}
+        	LOG.info("Enter your message");
+			LOG.info("Say \"unblock\" to cancel privacy settings, \"bye\" to quit");
+			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+			String msg;
+			while (!(msg = br.readLine()).equals("bye")) {
+				if (msg.equals("unblock")) {
+					privacyManager.declineDefaultList();
+					privacyManager.deletePrivacyList("blockedPeople");
+					LOG.debug(contactJid+" is now unblocked");
 				}
-				xmppManager.sendMessage(chat, "bye");
-			} catch (IOException e) {
-				e.printStackTrace();
+				else {
+					xmppManager.sendMessage(chat, msg);
+				}
 			}
+			xmppManager.sendMessage(chat, "bye");
+			// -- Change presence
+	        xmppManager.setStatus(false, "Bye !");
         }
         catch (XMPPException e) {
+			e.printStackTrace();
+        }
+	    catch (IOException e) {
 			e.printStackTrace();
 		}
         catch (Exception e) {
