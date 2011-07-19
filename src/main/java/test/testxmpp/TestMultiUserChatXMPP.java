@@ -33,10 +33,12 @@ private static final Logger LOG = Logger.getLogger(TestMultiUserChatXMPP.class);
     private String username;
     private String password;
     private String resource;
+    private String pseudonym;
     private static String defaultServer = "127.0.0.1";
     private static String defaultUsername = "test";
     private static String defaultPassword = "test";
     private static String defaultResource = "SomeComputer";
+    private static String defaultPseudonym = "Test";
     private static final int packetReplyTimeout = 500; // milliseconds
     
     private ConnectionConfiguration config;
@@ -57,6 +59,8 @@ private static final Logger LOG = Logger.getLogger(TestMultiUserChatXMPP.class);
 				: defaultPassword;
 		String resource = cmd.hasOption('r') ? cmd.getOptionValue('r')
 				: defaultResource;
+		String pseudonym = cmd.hasOption('n') ? cmd.getOptionValue('n')
+				: defaultPseudonym;
 		XMPPConnection.DEBUG_ENABLED = cmd.hasOption('d');
 		
 		TestMultiUserChatXMPP xmppManager = null;
@@ -82,7 +86,6 @@ private static final Logger LOG = Logger.getLogger(TestMultiUserChatXMPP.class);
 	        }
 	        
 	        // -- Chat
-	        String pseudonym = "Test";
 	        MultiUserChat chat = new MultiUserChat(xmppManager.connection, "myroom4@conference.testopenfire");
 			// Create the room
 			try {
@@ -136,6 +139,8 @@ private static final Logger LOG = Logger.getLogger(TestMultiUserChatXMPP.class);
 				"password for that login name (defaults to "+defaultPassword+")");
 		options.addOption("r", true,
 				"resource you are connecting from (default: "+defaultResource+")");
+		options.addOption("n", true,
+				"the pseudonym for the conference chat (default: "+defaultPseudonym+")");
 		options.addOption("d", false, "enable debug (default: false)");
 		CommandLineParser parser = new PosixParser();
 		CommandLine cmd = null;
@@ -155,7 +160,7 @@ private static final Logger LOG = Logger.getLogger(TestMultiUserChatXMPP.class);
 	
 	private static void printHelp(Options options) {
 		HelpFormatter formatter = new HelpFormatter();
-		formatter.printHelp("java -jar testxmpp-bin.jar [-s server] [-u username] [-p password] [-r resource] [-d] ", options);
+		formatter.printHelp("java -jar testxmpp-bin.jar [-s server] [-u username] [-p password] [-r resource] [-n pseudonym] [-d] ", options);
 	}
 	
 	public TestMultiUserChatXMPP(String server, String username, String password, String resource) throws XMPPException {
