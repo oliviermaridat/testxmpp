@@ -21,7 +21,7 @@ import org.jivesoftware.smackx.pubsub.PubSubManager;
 
 import test.testxmpp.listener.TestItemEventListener;
 
-
+//dfgfdg
 public class Client {
 	private static final Logger LOG = Logger.getLogger(Client.class);
 	
