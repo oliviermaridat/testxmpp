@@ -20,8 +20,10 @@ import org.jivesoftware.smackx.pubsub.AccessModel;
 import org.jivesoftware.smackx.pubsub.ConfigureForm;
 import org.jivesoftware.smackx.pubsub.FormType;
 import org.jivesoftware.smackx.pubsub.LeafNode;
+import org.jivesoftware.smackx.pubsub.PayloadItem;
 import org.jivesoftware.smackx.pubsub.PubSubManager;
 import org.jivesoftware.smackx.pubsub.PublishModel;
+import org.jivesoftware.smackx.pubsub.SimplePayload;
 
 public class Provider {
 	private static final Logger LOG = Logger.getLogger(Provider.class);
@@ -69,15 +71,17 @@ public class Provider {
             form.setNotifyRetract(true);
             form.setPersistentItems(true);
             form.setPublishModel(PublishModel.open);
-            LeafNode leaf = (LeafNode) mgr.createNode("testNode", form);
-        	leaf.subscribe("test");
+            LeafNode leaf = (LeafNode) mgr.createNode("testNode4", form);
+            leaf.send(new PayloadItem("test" + System.currentTimeMillis(), 
+                    new SimplePayload("book", "pubsub:test:book", "")));
         	
 	        LOG.info("Enter your message");
 			LOG.info("Say \"bye\" to quit");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			String msg;
 			while (!(msg = br.readLine()).equals("bye")) {
-				leaf.subscribe("msg");
+				leaf.send(new PayloadItem(msg + System.currentTimeMillis(), 
+	                    new SimplePayload("book", "pubsub:test:book", "")));
 			}
         }
         catch (XMPPException e) {

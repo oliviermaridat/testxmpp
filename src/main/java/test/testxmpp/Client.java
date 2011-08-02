@@ -12,16 +12,15 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.log4j.Logger;
 import org.jivesoftware.smack.ConnectionConfiguration;
+import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
 import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;
-import org.jivesoftware.smackx.pubsub.AccessModel;
-import org.jivesoftware.smackx.pubsub.ConfigureForm;
-import org.jivesoftware.smackx.pubsub.FormType;
 import org.jivesoftware.smackx.pubsub.LeafNode;
 import org.jivesoftware.smackx.pubsub.PubSubManager;
-import org.jivesoftware.smackx.pubsub.PublishModel;
+
+import test.testxmpp.listener.TestItemEventListener;
+
 
 public class Client {
 	private static final Logger LOG = Logger.getLogger(Client.class);
@@ -63,7 +62,7 @@ public class Client {
             PubSubManager mgr = new PubSubManager(client.connection);
 
             // Get the node
-            LeafNode leaf = (LeafNode) mgr.getNode("testNode");
+            LeafNode leaf = (LeafNode) mgr.getNode("testNode4");
             leaf.addItemEventListener(new TestItemEventListener());
             leaf.subscribe(client.connection.getUser());
 	        LOG.info("Enter your message");
