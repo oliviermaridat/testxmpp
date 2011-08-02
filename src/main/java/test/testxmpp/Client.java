@@ -25,6 +25,7 @@ import test.testxmpp.listener.TestItemEventListener;
 * @author Olivier
 * @date now
 * @see what you want
+* test
 */
 public class Client {
 	private static final Logger LOG = Logger.getLogger(Client.class);
