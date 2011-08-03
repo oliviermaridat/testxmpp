@@ -21,6 +21,8 @@ import org.jivesoftware.smackx.pubsub.PubSubManager;
 
 import test.testxmpp.listener.TestItemEventListener;
 
+//test
+
 /**
 * @author Olivier
 * @date now
