@@ -1,5 +1,5 @@
 package test.testxmpp;
-//bliblouuhsdfji
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -19,18 +19,8 @@ import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smackx.pubsub.LeafNode;
 import org.jivesoftware.smackx.pubsub.PubSubManager;
 
-//bliblouuhsdfji
 import test.testxmpp.listener.TestItemEventListener;
 
-//test
-
-/**
-* @author Olivier
-* @date now
-* @see what you want
-* test
-*ahah
-*/
 public class Client {
 	private static final Logger LOG = Logger.getLogger(Client.class);
 	
